@@ -154,6 +154,7 @@ function dyndns_list()
         'strato' => 'STRATO',
         'strato-v6' => 'STRATO (v6)',
         'zoneedit' => 'ZoneEdit',
+        'dnspod' => 'DNSPod',
     );
 }
 
