@@ -62,6 +62,7 @@
  *  dynv6 v6                    - Last Tested: 25 June 2019
  *  regfish                     - Last Tested: 15 August 2017
  *  regfish v6                  - Last Tested: 15 August 2017
+ *  dnspod                      - Last Tested: 10 Oct. 2021
  * +====================================================+
  *
  * @author    E.Kristensen
@@ -236,6 +237,15 @@ class updatedns
                     $this->_error(5);
                 }
                 break;
+            case 'dnspod':
+                if (!$dnsUser) {
+                    $this->_error(3);
+                } elseif (!$dnsPass) {
+                    $this->_error(4);
+                } elseif (!$dnsHost) {
+                    $this->_error(5);
+                }
+                break;
             default:
                 if (!$dnsUser) {
                     $this->_error(3);
@@ -366,6 +376,7 @@ class updatedns
                 case 'strato':
                 case 'strato-v6':
                 case 'zoneedit':
+                case 'dnspod':
                     $this->_update();
                     if ($this->_dnsDummyUpdateDone == true) {
                         // If a dummy update was needed, then sleep a while and do the update again to put the proper address back.
@@ -1313,6 +1324,85 @@ class updatedns
                 curl_setopt($ch, CURLOPT_USERPWD, $this->_dnsHost . ':' . $this->_dnsPass);
                 curl_setopt($ch, CURLOPT_URL, $server . $url);
                 break;
+           case 'dnspod':
+                $token = $this->_dnsPass;
+                $pos1 = stripos($this->_dnsHost, '.');
+                // get current records
+                $post_data['domain'] = substr($this->_dnsHost, $pos1 + 1);
+                $post_data['sub_domain'] = substr($this->_dnsHost, 0, $pos1);
+                $post_data['record_type'] = 'A';
+                $post_data['login_token'] = $token;
+                $post_data['format'] = 'json';
+                $post_data['lang'] = 'en';
+                $body = json_encode($post_data);
+                log_error("get current records, body:" . $body);
+
+                $server = "https://dnsapi.cn/Record.List";
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_URL, $server);
+                curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
+                $data = curl_exec($ch);
+                $output = json_decode($data);
+                if ($output->status->code == 1) {
+                    log_error("Dynamic DNS: (Success) get {$this->_dnsHost} records, records_num: {$output->info->records_num}");
+                } elseif ( $output->status->code == 10) {
+                    log_error("Dynamic DNS: (Success) get {$this->_dnsHost} records, message: {$output->status->message}");
+                } else {
+                    log_error("Dynamic DNS (Failed) get {$this->_dnsHost} records, code: {$output->status->code}, message: {$output->status->message}");
+                    @curl_close($ch);
+                    return false;
+                }
+
+                $recordId = null;
+                $recordLineId = "0";
+                $oldIP = "";
+                // find recordId
+                if (!empty($output->records)) {
+                    foreach ($output->records as $key => $recordObj) {
+                        if (preg_match("/^{$recordObj->name}$/", "@")) { // FIXME by name
+                            if ($recordObj->type == 'A') {
+                                // Found matching host
+                                $recordId = $recordObj->id;
+                                $oldIP = $recordObj->value;
+                                $recordLineId = $recordObj->line_id;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // check if IP changed
+                if ($this->_dnsIP === $oldIP) {
+                    log_error("recordId: {$recordId} IP not changed, skip update");
+                    @curl_close($ch);
+                    return true;
+                }
+
+                // create new record or modify exist one 
+                if (!$recordId) {
+                    $server = "https://dnsapi.cn/Record.Create";
+                } else {
+                    $server = "https://dnsapi.cn/Record.Modify";
+                    $post_data['record_id'] = $recordId;
+                }
+
+                $post_data['domain'] = substr($this->_dnsHost, $pos1 + 1);
+                $post_data['sub_domain'] = substr($this->_dnsHost, 0, $pos1);
+                $post_data['record_type'] = 'A';
+                $post_data['record_line_id'] = $recordLineId;
+                $post_data['value'] = $this->_dnsIP;
+                $post_data['mx'] = $this->_dnsMX;
+                $post_data['login_token'] = $token;
+                $post_data['format'] = 'json';
+                $post_data['lang'] = 'en';
+
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_URL, $server);
+                curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+                break;
             default:
                 break;
         }
@@ -1848,6 +1938,16 @@ class updatedns
                     $status = "Dynamic DNS: (Error) Repsonse not handled check the following: {$data}";
                     log_error("Dynamic DNS: HTTP status: {$http_code} PAYLOAD: {$data}");
                     $this->_debug("Unknown HTTP status: " . $http_code);
+                }
+                break;
+           case 'dnspod':
+                $output = json_decode($data);
+                if ($output->status->code == 1) {
+                    $status = "Dynamic DNS: (Success) {$this->_dnsHost} updated to {$this->_dnsIP}";
+                    $successful_update = true;
+                } else {
+                    $status = "Dynamic DNS ({$this->_dnsHost}): update err, code: {$output->status->code}, message: {$output->status->message}";
+                    log_error("Dynamic DNS ({$this->_dnsHost}): update err, code: {$output->status->code}, message: {$output->status->message}");
                 }
                 break;
             default:
