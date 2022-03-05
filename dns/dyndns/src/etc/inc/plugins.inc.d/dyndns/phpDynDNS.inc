@@ -238,9 +238,7 @@ class updatedns
                 }
                 break;
             case 'dnspod':
-                if (!$dnsUser) {
-                    $this->_error(3);
-                } elseif (!$dnsPass) {
+                if (!$dnsPass) {
                     $this->_error(4);
                 } elseif (!$dnsHost) {
                     $this->_error(5);
