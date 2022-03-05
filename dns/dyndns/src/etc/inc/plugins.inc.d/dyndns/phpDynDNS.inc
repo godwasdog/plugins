@@ -1339,6 +1339,7 @@ class updatedns
 
                 $server = "https://dnsapi.cn/Record.List";
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+                curl_setopt($ch, CURLOPT_USERAGENT, $this->_UserAgent);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_URL, $server);
                 curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
@@ -1361,7 +1362,7 @@ class updatedns
                 // find recordId
                 if (!empty($output->records)) {
                     foreach ($output->records as $key => $recordObj) {
-                        if (preg_match("/^{$recordObj->name}$/", "@")) { // FIXME by name
+                        if (preg_match("/^{$recordObj->name}$/", substr($this->_dnsHost, 0, $pos1))) { // FIXME by name
                             if ($recordObj->type == 'A') {
                                 // Found matching host
                                 $recordId = $recordObj->id;
@@ -1399,6 +1400,7 @@ class updatedns
                 $post_data['lang'] = 'en';
 
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+                curl_setopt($ch, CURLOPT_USERAGENT, $this->_UserAgent);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_URL, $server);
                 curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
