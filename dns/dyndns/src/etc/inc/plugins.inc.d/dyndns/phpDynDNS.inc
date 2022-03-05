@@ -1337,7 +1337,7 @@ class updatedns
 
                 $server = "https://dnsapi.cn/Record.List";
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_USERAGENT, $this->_UserAgent);
+                curl_setopt($ch, CURLOPT_USERAGENT, "phpDynDNS/0.8(kevinlin@opnsense.com)");
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_URL, $server);
                 curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
@@ -1398,7 +1398,7 @@ class updatedns
                 $post_data['lang'] = 'en';
 
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_USERAGENT, $this->_UserAgent);
+                curl_setopt($ch, CURLOPT_USERAGENT, "phpDynDNS/0.8(kevinlin@opnsense.com)");
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_URL, $server);
                 curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
